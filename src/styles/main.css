@@ -1105,7 +1105,7 @@ h4.markdown-heading {
   gap: 0;
   min-height: 70px;
   overflow-x: auto;
-  padding: 14px 20px 12px;
+  padding: 14px 22px 12px;
   scrollbar-width: thin;
 }
 
@@ -1114,7 +1114,7 @@ h4.markdown-heading {
   background: transparent;
   border: 0;
   border-radius: 0;
-  color: var(--muted);
+  color: #9a3b22;
   display: inline-flex;
   flex: 0 0 auto;
   gap: 8px;
@@ -1129,10 +1129,10 @@ h4.markdown-heading {
 }
 
 .progress-stage:not(:first-child)::before {
-  background: linear-gradient(90deg, color-mix(in oklch, var(--line), var(--teal) 16%), color-mix(in oklch, var(--line), var(--teal) 34%));
+  background: linear-gradient(90deg, #d6673f, #c84d32);
   border-radius: 999px;
   content: "";
-  height: 2px;
+  height: 3px;
   left: 0;
   position: absolute;
   top: 50%;
@@ -1141,17 +1141,17 @@ h4.markdown-heading {
 }
 
 .progress-stage i {
-  background: #f8f6ee;
-  border: 2px solid var(--line);
+  background: #c84d32;
+  border: 2px solid #c84d32;
   border-radius: 50%;
-  box-shadow: 0 0 0 4px #fffef9;
+  box-shadow: 0 0 0 5px #f6ddd3;
   height: 14px;
   width: 14px;
   transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 
 .progress-stage strong {
-  color: var(--muted);
+  color: #6f2a19;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: .01em;
@@ -1191,24 +1191,42 @@ h4.markdown-heading {
   background: linear-gradient(90deg, #72b97b, #2f8f46);
 }
 
+.progress-stage.stage-pending {
+  color: #9a3b22;
+}
+
+.progress-stage.stage-pending i {
+  background: #c84d32;
+  border-color: #c84d32;
+  box-shadow: 0 0 0 5px #f6ddd3;
+}
+
+.progress-stage.stage-pending strong {
+  color: #6f2a19;
+}
+
+.progress-stage.stage-pending:not(:first-child)::before {
+  background: linear-gradient(90deg, #d6673f, #c84d32);
+}
+
 .progress-stage.stage-running {
-  color: var(--amber);
+  color: #9a3b22;
   transform: translateY(-1px);
 }
 
 .progress-stage.stage-running i {
   animation: pulseDot 1s ease-in-out infinite;
-  background: var(--amber);
-  border-color: var(--amber);
-  box-shadow: 0 0 0 4px var(--amber-2), 0 0 18px #a3661540;
+  background: #d6673f;
+  border-color: #d6673f;
+  box-shadow: 0 0 0 5px #f6ddd3, 0 0 18px #c84d3250;
 }
 
 .progress-stage.stage-running strong {
-  color: #6c470d;
+  color: #6f2a19;
 }
 
 .progress-stage.stage-running:not(:first-child)::before {
-  background: linear-gradient(90deg, #72b97b, var(--amber));
+  background: linear-gradient(90deg, #72b97b, #d6673f);
 }
 
 .progress-stage.stage-failed {

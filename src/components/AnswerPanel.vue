@@ -76,6 +76,17 @@ type VisibleStage = {
   message: string
 }
 
+const SUBWAY_STAGES = [
+  'load_session',
+  'conversation_context',
+  'intent_slot_understanding_agent',
+  'select_skill_from_registry',
+  'clarify_gate',
+  'parallel_hybrid_retrieval',
+  'evidence_decision',
+  'answer_generation',
+]
+
 const props = defineProps<{
   response: CompactAskResponse | null
   retrieval: CompactRetrieval | null
@@ -110,10 +121,27 @@ const totalElapsedMs = computed(() => {
 const visibleStages = computed(() => {
   const finalStages = props.retrieval?.progress_stages ?? []
   const sourceStages: Array<ProgressStage | DisplayStreamStatus> = finalStages.length ? finalStages : props.streamStatuses ?? []
+  if (!props.loading && !sourceStages.length) return []
 
-  return sourceStages
-    .map(normalizeProgressStage)
-    .filter((stage) => stage.timed && stage.phase !== 'client_answer_stream')
+  const stageMap = new Map(sourceStages.map((stage) => {
+    const normalized = normalizeProgressStage(stage)
+    return [normalized.phase, normalized]
+  }))
+
+  const stages = SUBWAY_STAGES.map((phase) => {
+    const stage = stageMap.get(phase)
+    if (stage) return stage
+    return {
+      phase,
+      status: 'pending',
+      duration_ms: 0,
+      timed: false,
+      cache_hit: false,
+      message: stageLabel(phase),
+    }
+  })
+
+  return props.loading && !props.response ? stages : trimTrailingIncompleteStages(stages)
 })
 
 function formatElapsed(value: number) {
@@ -142,8 +170,16 @@ function normalizeProgressStage(stage: ProgressStage | DisplayStreamStatus): Vis
     duration_ms: Number(stage.duration_ms || 0),
     timed: stage.timed ?? true,
     cache_hit: stage.cache_hit,
-    message: stageLabel(phase),
+    message: 'message' in stage && stage.message ? stage.message : stageLabel(phase),
   }
+}
+
+function trimTrailingIncompleteStages(stages: VisibleStage[]): VisibleStage[] {
+  let end = stages.length
+  while (end > 0 && ['pending', 'running'].includes(stages[end - 1].status)) {
+    end -= 1
+  }
+  return stages.slice(0, end)
 }
 
 function stageLabel(phase: string) {
@@ -159,7 +195,6 @@ function stageLabel(phase: string) {
     evidence_decision: '证据',
     retry_retrieval: '重试',
     answer_generation: '回答',
-    finalize_response: '整理响应',
   }
   return labels[phase] || phase
 }

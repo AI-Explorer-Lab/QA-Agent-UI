@@ -328,7 +328,6 @@ function stageLabel(stage: string): string {
     retry_retrieval: '重试',
     answer_generation: '回答',
     client_answer_stream: '输出',
-    finalize_response: '整理响应',
   }
   return labels[stage] || stage
 }

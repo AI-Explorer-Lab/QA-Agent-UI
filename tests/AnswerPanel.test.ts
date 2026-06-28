@@ -48,7 +48,7 @@ describe('AnswerPanel', () => {
     })
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Company summary')
-    expect(rendered.container.querySelector('.answer-badges .cache-badge')).toHaveTextContent('cache miss')
+    expect(rendered.container.querySelector('.answer-badges .cache-badge')).toHaveTextContent('cache: false')
     expect(screen.getByText('总耗时 54.6s')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: '1. 公司简介' })).toHaveTextContent('1. 公司简介')
     expect(screen.getByText('芯导科技').tagName).toBe('STRONG')
@@ -58,5 +58,69 @@ describe('AnswerPanel', () => {
     expect(screen.getByTestId('answer-body')).toHaveTextContent('Company summary')
     expect(screen.getByTestId('answer-body')).not.toHaveTextContent('**芯导科技**')
     expect(rendered.emitted()['focus-citation'][0]).toEqual(['C1'])
+  })
+
+  it('hides synthetic trailing pending stages after the final response is available', () => {
+    const cachedResponse: CompactAskResponse = {
+      ...response,
+      retrieval: {
+        ...response.retrieval,
+        cache_hit: true,
+        progress_stages: [
+          { phase: 'load_session', status: 'completed', duration_ms: 1 },
+          { phase: 'conversation_context', status: 'completed', duration_ms: 1 },
+          { phase: 'intent_slot_understanding_agent', status: 'completed', duration_ms: 1 },
+          { phase: 'select_skill_from_registry', status: 'completed', duration_ms: 1 },
+          { phase: 'clarify_gate', status: 'completed', duration_ms: 1 },
+          { phase: 'parallel_hybrid_retrieval', status: 'completed', duration_ms: 1 },
+          { phase: 'evidence_decision', status: 'completed', duration_ms: 1 },
+          { phase: 'answer_generation', status: 'completed', duration_ms: 1, cache_hit: true },
+        ],
+      },
+    }
+
+    const rendered = render(AnswerPanel, {
+      props: {
+        response: cachedResponse,
+        retrieval: cachedResponse.retrieval,
+        loading: false,
+      },
+    })
+
+    const stages = rendered.container.querySelectorAll('.progress-stage')
+    expect(stages).toHaveLength(8)
+    expect(stages[stages.length - 1]).toHaveClass('stage-completed')
+  })
+
+  it('does not show synthetic trailing stages while streaming an available final response', () => {
+    const cachedResponse: CompactAskResponse = {
+      ...response,
+      retrieval: {
+        ...response.retrieval,
+        cache_hit: true,
+        progress_stages: [
+          { phase: 'load_session', status: 'completed', duration_ms: 1 },
+          { phase: 'conversation_context', status: 'completed', duration_ms: 1 },
+          { phase: 'intent_slot_understanding_agent', status: 'completed', duration_ms: 1 },
+          { phase: 'select_skill_from_registry', status: 'completed', duration_ms: 1 },
+          { phase: 'clarify_gate', status: 'completed', duration_ms: 1 },
+          { phase: 'parallel_hybrid_retrieval', status: 'completed', duration_ms: 1 },
+          { phase: 'evidence_decision', status: 'completed', duration_ms: 1 },
+          { phase: 'answer_generation', status: 'completed', duration_ms: 1, cache_hit: true },
+        ],
+      },
+    }
+
+    const rendered = render(AnswerPanel, {
+      props: {
+        response: cachedResponse,
+        retrieval: cachedResponse.retrieval,
+        loading: true,
+      },
+    })
+
+    const stages = rendered.container.querySelectorAll('.progress-stage')
+    expect(stages).toHaveLength(8)
+    expect(stages[stages.length - 1]).toHaveClass('stage-completed')
   })
 })
