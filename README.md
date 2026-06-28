@@ -1,6 +1,6 @@
 # Trusted Agent UI
 
-Vue 3 前端工作台，用于对接 `Enterprise-Unstructured-Document-Trusted-Question-Answering-Agent` 后端。
+Vue 3 前端工作台，用于对接 `QA-Agent` 后端。
 
 ## 开发
 
