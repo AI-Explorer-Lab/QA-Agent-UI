@@ -38,6 +38,11 @@ export interface CompactRetrieval {
   collection_name: string
   trace_id: string
   cache_hit: boolean
+  query_expansion_cache_hit?: boolean
+  query_expansion_skipped?: string
+  llm_query_expansion_used?: boolean
+  llm_answer_cache_hit?: boolean
+  final_response_cache_hit?: boolean
   evidence_count: number
   citation_count: number
   repository_collection_count: number

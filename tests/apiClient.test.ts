@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ApiError, askQuestion } from '@/api/client'
+import { ApiError, askQuestion, askQuestionStream } from '@/api/client'
 
 describe('api client', () => {
   beforeEach(() => {
@@ -79,5 +79,57 @@ describe('api client', () => {
       status: 404,
       payload: expect.objectContaining({ code: 'NOT_FOUND' }),
     })
+  })
+
+  it('normalizes include_debug stream responses so cache metadata still renders', async () => {
+    const encoder = new TextEncoder()
+    const debugPayload = {
+      answer: 'cached answer [C1]',
+      decision: 'answer',
+      query_type: 'table_qa',
+      confidence: 1,
+      session_id: 'session-debug',
+      citations: [{ citation_id: 'C1' }],
+      evidence: [{ chunk_id: 'chunk-1' }],
+      retrieval_trace: {
+        collection_name: 'xindao',
+        trace_id: 'trace-debug',
+        cache_hit: true,
+        workflow_runner: 'langgraph',
+        workflow_duration_ms: 7100,
+        repository_collection_count: 878,
+        progress_stages: [{ phase: 'answer_generation', status: 'completed', duration_ms: 1, cache_hit: true }],
+        llm: { answer_cache_hit: true },
+      },
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode(`event: final\ndata: ${JSON.stringify(debugPayload)}\n\n`))
+            controller.close()
+          },
+        }),
+      }),
+    )
+
+    const response = await askQuestionStream({
+      question: 'cache debug?',
+      session_id: '',
+      collection_name: 'xindao',
+      top_k: 5,
+      expand_query_num: 3,
+      enable_cache: true,
+      include_debug: true,
+    })
+
+    expect(response.retrieval.cache_hit).toBe(true)
+    expect(response.retrieval.collection_name).toBe('xindao')
+    expect(response.retrieval.trace_id).toBe('trace-debug')
+    expect(response.retrieval.evidence_count).toBe(1)
+    expect(response.retrieval.citation_count).toBe(1)
+    expect(response.retrieval.progress_stages?.[0]).toMatchObject({ cache_hit: true })
   })
 })

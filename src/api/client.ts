@@ -42,6 +42,41 @@ async function ensureOk<T>(response: Response): Promise<T> {
   return payload as T
 }
 
+export function normalizeAskResponse(response: AskResponse): AskResponse {
+  if (!isRecord(response)) return response
+
+  const retrieval = getRecord(response, 'retrieval')
+  if (retrieval) return response
+
+  const retrievalTrace = getRecord(response, 'retrieval_trace')
+  if (!retrievalTrace) return response
+
+  const citations = Array.isArray(response.citations) ? response.citations : []
+  const evidence = Array.isArray(response.evidence) ? response.evidence : []
+  const llmTrace = getRecord(retrievalTrace, 'llm')
+  const progressStages = retrievalTrace.progress_stages
+
+  return {
+    ...response,
+    retrieval: {
+      collection_name: stringValue(retrievalTrace.collection_name),
+      trace_id: stringValue(retrievalTrace.trace_id),
+      cache_hit: booleanValue(retrievalTrace.cache_hit),
+      query_expansion_cache_hit: booleanValue(retrievalTrace.query_expansion_cache_hit),
+      query_expansion_skipped: stringValue(retrievalTrace.query_expansion_skipped),
+      llm_query_expansion_used: booleanValue(retrievalTrace.llm_query_expansion_used),
+      llm_answer_cache_hit: booleanValue(llmTrace?.answer_cache_hit),
+      final_response_cache_hit: booleanValue(retrievalTrace.final_response_cache_hit),
+      evidence_count: evidence.length,
+      citation_count: citations.length,
+      repository_collection_count: numberValue(retrievalTrace.repository_collection_count),
+      workflow_runner: stringValue(retrievalTrace.workflow_runner),
+      workflow_duration_ms: numberValue(retrievalTrace.workflow_duration_ms),
+      progress_stages: Array.isArray(progressStages) ? progressStages : [],
+    },
+  }
+}
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -58,7 +93,7 @@ export function askQuestion(payload: AskPayload): Promise<AskResponse> {
   return requestJson<AskResponse>('/qa/ask', {
     method: 'POST',
     body: JSON.stringify(payload),
-  })
+  }).then(normalizeAskResponse)
 }
 
 interface SseParseResult {
@@ -87,7 +122,7 @@ function parseSseBlock(block: string, callbacks?: AskStreamCallbacks): SseParseR
     return {}
   }
   if (event === 'final') {
-    return { final: data as AskResponse }
+    return { final: normalizeAskResponse(data as AskResponse) }
   }
   if (event === 'error') {
     return { error: new ApiError(500, data as ApiErrorPayload) }
@@ -142,6 +177,30 @@ export async function askQuestionStream(payload: AskPayload, callbacks?: AskStre
   }
 
   throw new Error('流式回答未返回最终结果')
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function getRecord(root: unknown, key: string): Record<string, unknown> | null {
+  if (!isRecord(root)) return null
+  const value = root[key]
+  return isRecord(value) ? value : null
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === 'string' ? value : value == null ? '' : String(value)
+}
+
+function numberValue(value: unknown): number {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(numeric) ? numeric : 0
+}
+
+function booleanValue(value: unknown): boolean {
+  if (typeof value === 'string') return value.toLowerCase() === 'true'
+  return Boolean(value)
 }
 
 export function indexDocument(payload: IndexPayload): Promise<IndexResponse> {
