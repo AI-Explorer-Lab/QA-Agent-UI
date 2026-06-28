@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { Braces, RefreshCw, ShieldAlert } from '@lucide/vue'
 
 import { useQaStore } from '@/stores/qaStore'
@@ -71,13 +71,21 @@ import { useQaStore } from '@/stores/qaStore'
 type TraceValue = Record<string, unknown> | unknown[] | null
 
 const store = useQaStore()
-const activeTab = ref('retrieval')
 const tabs = [
   { key: 'retrieval', label: 'Retrieval Trace' },
   { key: 'rerank', label: 'Rerank Trace' },
   { key: 'skill', label: 'Skill Trace' },
   { key: 'raw', label: 'Raw JSON' },
 ]
+const tabKeys = new Set(tabs.map((tab) => tab.key))
+const activeTab = computed({
+  get: () => tabKeys.has(store.debugActiveTab) ? store.debugActiveTab : 'retrieval',
+  set: (tab: string) => {
+    if (tabKeys.has(tab)) {
+      store.debugActiveTab = tab
+    }
+  },
+})
 
 const payload = computed(() => (store.debugResponse || store.currentResponse || null) as Record<string, unknown> | null)
 

@@ -35,6 +35,7 @@ interface WorkspaceState {
   elapsedMs: number
   lastPayload: AskPayload | null
   askRunId: number
+  debugActiveTab: string
 }
 
 export const useQaStore = defineStore('qa', {
@@ -60,6 +61,7 @@ export const useQaStore = defineStore('qa', {
     elapsedMs: 0,
     lastPayload: null,
     askRunId: 0,
+    debugActiveTab: 'retrieval',
   }),
   getters: {
     citations: (state) => state.currentResponse?.citations ?? [],
