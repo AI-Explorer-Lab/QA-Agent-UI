@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="upload-view">
     <section class="upload-panel panel">
       <div class="panel-header">
@@ -13,7 +13,7 @@
           <span>collection_name</span>
           <div class="collection-input inline">
             <Database :size="16" />
-            <input v-model="store.collectionName" autocomplete="off" />
+            <input v-model="store.uploadCollectionName" autocomplete="off" />
           </div>
         </label>
 
@@ -88,7 +88,7 @@
       <div v-if="store.indexingResult" class="result-grid">
         <span>
           <small>collection</small>
-          <strong>{{ store.indexingResult.collection_name || store.collectionName }}</strong>
+          <strong>{{ store.indexingResult.collection_name || store.uploadCollectionName }}</strong>
         </span>
         <span>
           <small>documents</small>
@@ -182,7 +182,7 @@ function onFileChange(event: Event) {
 function submitUpload() {
   if (!selectedFile.value) return
   void store.uploadPdf(selectedFile.value, {
-    collection_name: store.collectionName.trim() || 'default',
+    collection_name: store.uploadCollectionName.trim() || 'default',
     doc_source: docSource.value,
     force_rebuild: forceRebuild.value,
   })

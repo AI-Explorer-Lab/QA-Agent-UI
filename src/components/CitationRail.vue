@@ -30,6 +30,7 @@
         <div class="citation-meta">
           <span><FileText :size="14" /> {{ citation.source_name || citation.doc_source || 'PDF' }}</span>
           <span><MapPinned :size="14" /> page {{ formatCitationPage(citation) }}</span>
+          <span><Fingerprint :size="14" /> {{ formatCitationChunk(citation.chunk_id) }}</span>
         </div>
         <p class="quote-box">{{ citation.quote }}</p>
       </article>
@@ -39,10 +40,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ExternalLink, FileSearch, FileText, MapPinned } from '@lucide/vue'
+import { ExternalLink, FileSearch, FileText, Fingerprint, MapPinned } from '@lucide/vue'
 
 import type { Citation } from '@/types/qa'
-import { formatCitationPage } from '@/utils/citationPage'
+import { formatCitationChunk, formatCitationPage } from '@/utils/citationPage'
 
 const props = defineProps<{
   citations: Citation[]

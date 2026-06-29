@@ -19,3 +19,16 @@ export function formatCitationPage(citation: Pick<Citation, 'page_idx' | 'page_r
   const page = citation.page_idx === null ? null : toDisplayPage(citation.page_idx)
   return page === null ? '-' : String(page)
 }
+
+export function formatCitationChunk(chunkId: string): string {
+  const value = String(chunkId || '').trim()
+  if (!value) return '-'
+
+  const numericId = /^(\d+)$/.exec(value)
+  if (numericId) return 'chunk ' + numericId[1]
+
+  const chunkMatch = /(?:^|[_-])chunk[_-]?(\d+)$/i.exec(value)
+  if (chunkMatch) return 'chunk ' + chunkMatch[1]
+
+  return value
+}

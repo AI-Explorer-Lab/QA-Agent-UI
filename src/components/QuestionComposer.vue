@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <section class="question-composer panel">
     <div class="composer-topline">
       <span class="field-title">问题框</span>
@@ -8,6 +8,7 @@
       v-model="store.question"
       aria-label="问题"
       placeholder="请输入你想基于 PDF 证据核查的问题，例如：总结某家公司简介与历史沿革"
+      @keydown="handleTextareaKeydown"
     />
 
     <div class="control-grid">
@@ -54,4 +55,11 @@ import { BrainCircuit, Braces, SendHorizonal, ToggleLeft, ToggleRight } from '@l
 import { useQaStore } from '@/stores/qaStore'
 
 const store = useQaStore()
+
+function handleTextareaKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return
+  if (store.loading || !store.question.trim()) return
+  event.preventDefault()
+  void store.ask()
+}
 </script>

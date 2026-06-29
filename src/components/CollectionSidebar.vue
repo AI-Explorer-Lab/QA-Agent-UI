@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <aside class="collection-sidebar panel">
     <div class="panel-header compact">
       <div>
-        <p class="eyebrow">文档库 / Collections</p>
+        <p class="eyebrow">Document Library / Collections</p>
         <h2>{{ store.collectionName || '未命名 collection' }}</h2>
       </div>
     </div>
@@ -71,7 +71,6 @@
             </span>
           </button>
           <button
-            v-if="session.session_id === store.sessionId"
             class="delete-session-button"
             type="button"
             :data-session-id="session.session_id"
@@ -79,7 +78,7 @@
             :disabled="store.deletingSessionId === session.session_id"
             title="删除当前对话"
             aria-label="删除当前对话"
-            @click.stop="requestDeleteCurrentSession"
+            @click.stop="requestDeleteSession(session.session_id)"
           >
             <LoaderCircle v-if="store.deletingSessionId === session.session_id" :size="13" class="spin-icon" />
             <Trash2 v-else :size="14" />
@@ -146,8 +145,22 @@ function formatSessionTime(value?: string) {
   return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit' }).format(timestamp)
 }
 
-async function requestDeleteCurrentSession() {
-  if (!store.sessionId) return
-  await store.deleteCurrentSession()
+async function requestDeleteSession(sessionId: string) {
+  const sid = sessionId.trim()
+  if (!sid || store.deletingSessionId) return
+  if (sid === store.sessionId) {
+    await store.deleteCurrentSession()
+    return
+  }
+
+  const previousSessionId = store.sessionId
+  store.sessionId = sid
+  try {
+    await store.deleteCurrentSession()
+  } finally {
+    if (!store.sessionId && previousSessionId && previousSessionId !== sid) {
+      store.sessionId = previousSessionId
+    }
+  }
 }
 </script>

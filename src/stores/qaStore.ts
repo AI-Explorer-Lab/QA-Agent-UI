@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+﻿import { defineStore } from 'pinia'
 
 import {
   ApiError,
@@ -32,6 +32,7 @@ import type {
 
 interface WorkspaceState {
   collectionName: string
+  uploadCollectionName: string
   question: string
   sessionId: string
   topK: number
@@ -67,6 +68,7 @@ interface WorkspaceState {
 export const useQaStore = defineStore('qa', {
   state: (): WorkspaceState => ({
     collectionName: 'default',
+    uploadCollectionName: 'default',
     question: '',
     sessionId: '',
     topK: 5,
@@ -512,7 +514,7 @@ export const useQaStore = defineStore('qa', {
         const result = await this.pollIndexingTask(startedTask.task_id)
         if (result) {
           this.indexingResult = result
-          this.collectionName = result.collection_name || payload.collection_name || this.collectionName
+          this.uploadCollectionName = result.collection_name || payload.collection_name || this.uploadCollectionName
         }
         return result
       } catch (error) {

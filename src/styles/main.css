@@ -489,10 +489,27 @@ button {
   display: inline-flex;
   height: 24px;
   justify-content: center;
+  opacity: 0;
+  pointer-events: none;
   position: absolute;
   right: 8px;
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  transform: translateY(2px);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease,
+    opacity 150ms ease;
+  visibility: hidden;
   width: 24px;
+}
+
+.session-history-item:hover .delete-session-button,
+.session-history-item:focus-within .delete-session-button {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  visibility: visible;
 }
 
 .delete-session-button:hover {
@@ -652,7 +669,9 @@ input:focus {
 }
 
 .question-composer .control-grid label {
-  padding: 7px 10px;
+  gap: 2px;
+  min-height: 40px;
+  padding: 6px 11px;
 }
 
 .toggle,
@@ -681,7 +700,13 @@ input:focus {
 }
 
 .question-composer .toggle {
-  min-height: 44px;
+  min-height: 40px;
+}
+
+.question-composer .control-grid input {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .toggle.on {
@@ -740,7 +765,9 @@ input:focus {
 
 @container (min-width: 560px) {
   .control-grid {
-    grid-template-columns: 1fr 1fr auto auto;
+    align-items: stretch;
+    grid-template-columns: 148px 184px auto auto;
+    justify-content: start;
   }
 
   .question-composer .control-grid label,
@@ -1550,6 +1577,7 @@ h4.markdown-heading {
   align-items: center;
   color: var(--muted);
   display: grid;
+  flex: 1;
   gap: 10px;
   justify-items: center;
   min-height: 260px;
@@ -1732,6 +1760,7 @@ h4.markdown-heading {
 }
 
 .upload-view {
+  align-items: stretch;
   display: grid;
   gap: 14px;
   grid-template-columns: minmax(340px, 430px) minmax(420px, 1fr) minmax(300px, 380px);
@@ -1741,7 +1770,9 @@ h4.markdown-heading {
 .upload-panel,
 .pipeline-panel,
 .result-panel {
-  align-self: start;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 .upload-form {
