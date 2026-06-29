@@ -7,6 +7,7 @@ export interface AskPayload {
   top_k: number
   expand_query_num: number
   enable_cache: boolean
+  use_llm_intent_slot: boolean
   include_debug?: boolean
 }
 
@@ -70,6 +71,75 @@ export interface DebugAskResponse extends CompactAskResponse {
 }
 
 export type AskResponse = CompactAskResponse | DebugAskResponse
+
+export interface ConversationDisplayMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp?: string
+  response?: CompactAskResponse | null
+  retrieval?: CompactRetrieval | null
+  loading?: boolean
+  failed?: boolean
+}
+
+export interface SessionMessage {
+  message_id?: string
+  timestamp?: string
+  role: 'user' | 'assistant' | string
+  content: string
+  metadata?: Record<string, unknown>
+}
+
+export interface SessionTrace {
+  trace_id?: string
+  message_id?: string
+  collection_name?: string
+  question?: string
+  selected_candidates?: unknown[]
+  expanded_queries?: unknown[]
+  rerank_trace?: Record<string, unknown>
+  created_at?: string
+  [key: string]: unknown
+}
+
+export interface SessionSummary {
+  session_id: string
+  collection_name: string
+  title: string
+  message_count: number
+  turn_count: number
+  updated_at: string
+  created_at: string
+  last_activity_at?: string
+  last_user_question?: string
+  last_decision?: string
+  last_query_type?: string
+  last_confidence?: number
+  citation_count: number
+  evidence_count: number
+  retrieval_trace_id?: string
+  turn_type?: string
+  context_source?: string
+  conversation_focus?: Record<string, unknown> | null
+}
+
+export interface SessionListResponse {
+  collection_name: string
+  sessions: SessionSummary[]
+}
+
+export interface DeleteSessionResponse {
+  session_id: string
+  deleted: boolean
+  deleted_counts: {
+    evaluation_records?: number
+    retrieval_traces?: number
+    qa_messages?: number
+    qa_sessions?: number
+    [key: string]: number | undefined
+  }
+}
 
 export interface AskStreamStatus {
   message: string
@@ -150,8 +220,12 @@ export interface DocumentTaskResponse {
 
 export interface SessionResponse {
   session_id: string
-  messages: unknown[]
-  retrieval_traces: unknown[]
+  collection_name?: string
+  metadata?: Record<string, unknown>
+  created_at?: string
+  updated_at?: string
+  messages: SessionMessage[]
+  retrieval_traces: SessionTrace[]
   [key: string]: unknown
 }
 

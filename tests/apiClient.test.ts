@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ApiError, askQuestion, askQuestionStream } from '@/api/client'
+import { ApiError, askQuestion, askQuestionStream, deleteSession, listSessions } from '@/api/client'
 
 describe('api client', () => {
   beforeEach(() => {
@@ -39,6 +39,7 @@ describe('api client', () => {
       top_k: 5,
       expand_query_num: 3,
       enable_cache: true,
+      use_llm_intent_slot: false,
       include_debug: false,
     })
 
@@ -74,6 +75,7 @@ describe('api client', () => {
         top_k: 5,
         expand_query_num: 3,
         enable_cache: true,
+        use_llm_intent_slot: false,
       }),
     ).rejects.toMatchObject({
       status: 404,
@@ -122,6 +124,7 @@ describe('api client', () => {
       top_k: 5,
       expand_query_num: 3,
       enable_cache: true,
+      use_llm_intent_slot: false,
       include_debug: true,
     })
 
@@ -131,5 +134,50 @@ describe('api client', () => {
     expect(response.retrieval.evidence_count).toBe(1)
     expect(response.retrieval.citation_count).toBe(1)
     expect(response.retrieval.progress_stages?.[0]).toMatchObject({ cache_hit: true })
+  })
+
+  it('lists sessions for the selected collection', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          collection_name: 'default',
+          sessions: [{ session_id: 's1', title: '季度收入追问', turn_count: 3 }],
+        }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await listSessions('default', 20)
+
+    expect(fetchMock).toHaveBeenCalledWith('/qa/sessions?collection_name=default&limit=20', expect.any(Object))
+    expect(response.sessions[0].title).toBe('季度收入追问')
+  })
+
+  it('deletes a session by session id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          session_id: 'session-delete',
+          deleted: true,
+          deleted_counts: {
+            qa_sessions: 1,
+            qa_messages: 2,
+            retrieval_traces: 1,
+            evaluation_records: 1,
+          },
+        }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await deleteSession('session-delete')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/qa/sessions/session-delete',
+      expect.objectContaining({ method: 'DELETE' }),
+    )
+    expect(response.deleted_counts.qa_sessions).toBe(1)
   })
 })

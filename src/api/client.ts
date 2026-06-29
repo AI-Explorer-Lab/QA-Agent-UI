@@ -4,9 +4,11 @@ import type {
   AskResponse,
   AskStreamCallbacks,
   AskStreamStatus,
+  DeleteSessionResponse,
   DocumentTaskResponse,
   IndexPayload,
   IndexResponse,
+  SessionListResponse,
   SessionResponse,
   UploadPayload,
 } from '@/types/qa'
@@ -246,6 +248,20 @@ export function getDocumentTask(taskId: string): Promise<DocumentTaskResponse> {
 
 export function getSession(sessionId: string): Promise<SessionResponse> {
   return requestJson<SessionResponse>(`/qa/sessions/${encodeURIComponent(sessionId)}`)
+}
+
+export function listSessions(collectionName: string, limit = 40): Promise<SessionListResponse> {
+  const params = new URLSearchParams({
+    collection_name: collectionName.trim() || 'default',
+    limit: String(limit),
+  })
+  return requestJson<SessionListResponse>(`/qa/sessions?${params.toString()}`)
+}
+
+export function deleteSession(sessionId: string): Promise<DeleteSessionResponse> {
+  return requestJson<DeleteSessionResponse>(`/qa/sessions/${encodeURIComponent(sessionId)}`, {
+    method: 'DELETE',
+  })
 }
 
 export function checkHealth(): Promise<{ status: string }> {

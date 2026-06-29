@@ -2,7 +2,7 @@
   <section class="answer-panel panel">
     <div class="panel-header">
       <div>
-        <p class="eyebrow">回答</p>
+        <p class="eyebrow">对话</p>
         <h2>{{ panelTitle }}</h2>
       </div>
       <div v-if="response" class="answer-badges">
@@ -23,20 +23,64 @@
       </div>
     </div>
 
-    <div v-if="!response" class="empty-answer" :class="{ pending: loading }">
+    <div v-if="!displayMessages.length" class="empty-answer" :class="{ pending: loading }">
       <Sparkles :size="22" />
-      <p>{{ loading ? displayLoadingMessage : '输入问题后，答案会显示在这里；引用编号可点击并联动右侧证据' }}</p>
+      <p>{{ loading ? displayLoadingMessage : '输入问题后，对话会显示在这里；引用编号可点击并联动右侧证据' }}</p>
     </div>
 
-    <article v-else class="answer-body" data-testid="answer-body">
-      <div v-if="loading && !response.answer" class="typing-placeholder">
-        {{ displayLoadingMessage }}
-        <span class="stream-caret" aria-hidden="true" />
-      </div>
-      <MarkdownRenderer v-else :content="response.answer" @focus-citation="$emit('focus-citation', $event)" />
-    </article>
+    <div v-else class="conversation-thread" data-testid="conversation-thread">
+      <article
+        v-for="message in displayMessages"
+        :key="message.id"
+        class="chat-message"
+        :class="[
+          message.role,
+          {
+            failed: message.failed,
+            active: message.id === activeMessageId,
+            selectable: isSelectableAssistant(message),
+          },
+        ]"
+        :tabindex="isSelectableAssistant(message) ? 0 : undefined"
+        :aria-current="message.id === activeMessageId ? 'true' : undefined"
+        @click="selectMessage(message)"
+        @keydown.enter.prevent="selectMessage(message)"
+        @keydown.space.prevent="selectMessage(message)"
+      >
+        <div class="message-avatar">{{ message.role === 'user' ? '我' : '答' }}</div>
+        <div class="message-bubble">
+          <div class="message-meta">
+            <strong>{{ message.role === 'user' ? '你' : '可信问答助手' }}</strong>
+            <span v-if="message.timestamp">{{ formatTimestamp(message.timestamp) }}</span>
+          </div>
+          <p v-if="message.role === 'user'" class="user-question">{{ message.content }}</p>
+          <article v-else class="answer-body" data-testid="answer-body">
+            <div v-if="message.loading && !message.content" class="typing-placeholder">
+              {{ displayLoadingMessage }}
+              <span class="stream-caret" aria-hidden="true" />
+            </div>
+            <MarkdownRenderer
+              v-else
+              :content="message.content"
+              @focus-citation="focusMessageCitation(message, $event)"
+            />
+            <div v-if="message.response" class="message-badges">
+              <span class="status-badge" :class="message.response.decision">{{ message.response.decision }}</span>
+              <span class="metric-badge">{{ message.response.query_type }}</span>
+              <span
+                v-if="message.retrieval"
+                class="metric-badge cache-badge"
+                :class="message.retrieval.cache_hit ? 'cache-hit' : 'cache-miss'"
+              >
+                cache: {{ message.retrieval.cache_hit ? 'true' : 'false' }}
+              </span>
+            </div>
+          </article>
+        </div>
+      </article>
+    </div>
 
-    <div v-if="visibleStages.length" class="progress-strip" aria-label="回答生成进度">
+    <div v-if="showProgressStrip" class="progress-strip" aria-label="回答生成进度">
       <span
         v-for="stage in visibleStages"
         :key="stage.phase"
@@ -50,12 +94,11 @@
       </span>
     </div>
 
-    <div v-if="retrieval" class="meta-strip">
+    <div v-if="retrieval && showMetaStrip" class="meta-strip">
       <span><Database :size="15" /> {{ retrieval.collection_name }}</span>
       <span><Layers3 :size="15" /> evidence {{ retrieval.evidence_count }}</span>
       <span><Quote :size="15" /> citations {{ retrieval.citation_count }}</span>
       <span><Zap :size="15" /> cache {{ retrieval.cache_hit ? 'hit' : 'miss' }}</span>
-      <span class="trace-id">trace {{ retrieval.trace_id || 'pending' }}</span>
     </div>
   </section>
 </template>
@@ -65,7 +108,13 @@ import { computed } from 'vue'
 import { Database, Layers3, Quote, Sparkles, Zap } from '@lucide/vue'
 
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
-import type { CompactAskResponse, CompactRetrieval, DisplayStreamStatus, ProgressStage } from '@/types/qa'
+import type {
+  CompactAskResponse,
+  CompactRetrieval,
+  ConversationDisplayMessage,
+  DisplayStreamStatus,
+  ProgressStage,
+} from '@/types/qa'
 
 type VisibleStage = {
   phase: string
@@ -90,14 +139,18 @@ const SUBWAY_STAGES = [
 const props = defineProps<{
   response: CompactAskResponse | null
   retrieval: CompactRetrieval | null
+  messages?: ConversationDisplayMessage[]
   loading?: boolean
   loadingMessage?: string
   streamStatuses?: DisplayStreamStatus[]
   elapsedMs?: number
+  activeMessageId?: string
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (event: 'focus-citation', citationId: string): void
+  (event: 'select-message', messageId: string): void
+  (event: 'focus-message-citation', payload: { messageId: string; citationId: string }): void
 }>()
 
 const decisionTitle = computed(() => {
@@ -108,8 +161,24 @@ const decisionTitle = computed(() => {
 })
 
 const displayLoadingMessage = computed(() => normalizeDisplayMessage(props.loadingMessage))
+const displayMessages = computed<ConversationDisplayMessage[]>(() => {
+  if (props.messages?.length) return props.messages
+  if (!props.response) return []
+  return [
+    {
+      id: 'current-assistant-response',
+      role: 'assistant',
+      content: props.response.answer,
+      response: props.response,
+      retrieval: props.retrieval,
+      loading: props.loading,
+    },
+  ]
+})
 const panelTitle = computed(() => {
+  const turnCount = displayMessages.value.filter((message) => message.role === 'user').length
   if (props.response && props.loading) return '正在流式输出答案'
+  if (turnCount > 0) return `${turnCount} 轮对话`
   if (props.response) return decisionTitle.value
   return props.loading ? '正在生成答案' : '等待提问'
 })
@@ -118,6 +187,8 @@ const totalElapsedMs = computed(() => {
   const liveElapsedMs = Number(props.elapsedMs || 0)
   return responseElapsedMs > 0 ? responseElapsedMs : liveElapsedMs
 })
+const showProgressStrip = computed(() => visibleStages.value.length > 0 && (props.loading || !props.messages?.length))
+const showMetaStrip = computed(() => Boolean(props.retrieval) && (props.loading || !props.messages?.length))
 const visibleStages = computed(() => {
   const finalStages = props.retrieval?.progress_stages ?? []
   const sourceStages: Array<ProgressStage | DisplayStreamStatus> = finalStages.length ? finalStages : props.streamStatuses ?? []
@@ -147,6 +218,30 @@ const visibleStages = computed(() => {
 function formatElapsed(value: number) {
   if (value < 1000) return String(value) + 'ms'
   return (value / 1000).toFixed(1) + 's'
+}
+
+function isSelectableAssistant(message: ConversationDisplayMessage) {
+  return message.role === 'assistant' && Boolean(message.response) && !message.loading && !message.failed
+}
+
+function selectMessage(message: ConversationDisplayMessage) {
+  if (!isSelectableAssistant(message)) return
+  emit('select-message', message.id)
+}
+
+function focusMessageCitation(message: ConversationDisplayMessage, citationId: string) {
+  if (!isSelectableAssistant(message)) {
+    emit('focus-citation', citationId)
+    return
+  }
+  emit('focus-message-citation', { messageId: message.id, citationId })
+}
+
+function formatTimestamp(value?: string) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
 function normalizeDisplayMessage(message?: string) {

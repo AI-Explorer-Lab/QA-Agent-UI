@@ -57,7 +57,85 @@ describe('AnswerPanel', () => {
 
     expect(screen.getByTestId('answer-body')).toHaveTextContent('Company summary')
     expect(screen.getByTestId('answer-body')).not.toHaveTextContent('**芯导科技**')
-    expect(rendered.emitted()['focus-citation'][0]).toEqual(['C1'])
+    expect(rendered.emitted()['focus-message-citation'][0]).toEqual([
+      { messageId: 'current-assistant-response', citationId: 'C1' },
+    ])
+  })
+
+  it('renders a ChatGPT-style transcript with prior user and assistant turns', () => {
+    render(AnswerPanel, {
+      props: {
+        response,
+        retrieval: response.retrieval,
+        messages: [
+          { id: 'u1', role: 'user', content: '2025年营业收入是多少？' },
+          { id: 'a1', role: 'assistant', content: '2025年营业收入为39,360.75万元 [C1]', response, retrieval: response.retrieval },
+          { id: 'u2', role: 'user', content: '出处在哪里？' },
+        ],
+      },
+    })
+
+    expect(screen.getByTestId('conversation-thread')).toHaveTextContent('2025年营业收入是多少？')
+    expect(screen.getByTestId('conversation-thread')).toHaveTextContent('2025年营业收入为39,360.75万元')
+    expect(screen.getByTestId('conversation-thread')).toHaveTextContent('出处在哪里？')
+    expect(screen.getByText('2 轮对话')).toBeInTheDocument()
+  })
+
+  it('selects an assistant turn and emits message-aware citation focus events', async () => {
+    const firstResponse: CompactAskResponse = {
+      ...response,
+      answer: '绗竴杞洖绛?[C1]',
+      citations: [
+        {
+          citation_id: 'C1',
+          chunk_id: 'chunk-1',
+          doc_id: 'doc-1',
+          page_idx: 1,
+          page_range: '1',
+          heading_path: 'A',
+          quote: 'A',
+          confidence: 1,
+        },
+      ],
+    }
+    const secondResponse: CompactAskResponse = {
+      ...response,
+      answer: '绗簩杞洖绛?[C2]',
+      citations: [
+        {
+          citation_id: 'C2',
+          chunk_id: 'chunk-2',
+          doc_id: 'doc-2',
+          page_idx: 2,
+          page_range: '2',
+          heading_path: 'B',
+          quote: 'B',
+          confidence: 1,
+        },
+      ],
+    }
+    const rendered = render(AnswerPanel, {
+      props: {
+        response: secondResponse,
+        retrieval: secondResponse.retrieval,
+        activeMessageId: 'a2',
+        messages: [
+          { id: 'u1', role: 'user', content: '闂1' },
+          { id: 'a1', role: 'assistant', content: firstResponse.answer, response: firstResponse, retrieval: firstResponse.retrieval },
+          { id: 'u2', role: 'user', content: '闂2' },
+          { id: 'a2', role: 'assistant', content: secondResponse.answer, response: secondResponse, retrieval: secondResponse.retrieval },
+        ],
+      },
+    })
+
+    const assistantMessages = rendered.container.querySelectorAll('.chat-message.assistant')
+    expect(assistantMessages[1]).toHaveClass('active')
+
+    await fireEvent.click(assistantMessages[0])
+    expect(rendered.emitted()['select-message'][0]).toEqual(['a1'])
+
+    await fireEvent.click(screen.getByRole('button', { name: '[C1]' }))
+    expect(rendered.emitted()['focus-message-citation'][0]).toEqual([{ messageId: 'a1', citationId: 'C1' }])
   })
 
   it('hides synthetic trailing pending stages after the final response is available', () => {

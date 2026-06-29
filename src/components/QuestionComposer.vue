@@ -31,6 +31,15 @@
     </div>
 
     <div class="composer-actions">
+      <button
+        class="deep-think-button"
+        :class="{ on: store.useLlmIntentSlot }"
+        type="button"
+        @click="store.useLlmIntentSlot = !store.useLlmIntentSlot"
+      >
+        <BrainCircuit :size="17" />
+        深度思考
+      </button>
       <button class="primary-button" type="button" :disabled="store.loading || !store.question.trim()" @click="store.ask()">
         <SendHorizonal :size="17" />
         {{ store.loading ? '生成中' : '提问' }}
@@ -40,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { Braces, SendHorizonal, ToggleLeft, ToggleRight } from '@lucide/vue'
+import { BrainCircuit, Braces, SendHorizonal, ToggleLeft, ToggleRight } from '@lucide/vue'
 
 import { useQaStore } from '@/stores/qaStore'
 
