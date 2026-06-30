@@ -166,6 +166,19 @@ button {
   gap: 14px;
   grid-template-columns: minmax(250px, 295px) minmax(430px, 1fr) minmax(330px, 420px);
   min-height: calc(100vh - 96px);
+  transition: grid-template-columns 180ms ease;
+}
+
+.workspace-grid.sidebar-collapsed {
+  grid-template-columns: 46px minmax(520px, 1fr) minmax(330px, 420px);
+}
+
+.workspace-grid.citation-collapsed {
+  grid-template-columns: minmax(250px, 295px) minmax(520px, 1fr) 46px;
+}
+
+.workspace-grid.sidebar-collapsed.citation-collapsed {
+  grid-template-columns: 46px minmax(620px, 1fr) 46px;
 }
 
 .work-column {
@@ -220,6 +233,50 @@ button {
   min-height: 0;
   overflow: hidden;
   padding-bottom: 14px;
+  transition: width 180ms ease, padding 180ms ease;
+}
+
+.collection-sidebar.collapsed {
+  align-items: center;
+  gap: 0;
+  padding-bottom: 0;
+}
+
+.collection-sidebar.collapsed .panel-header.compact {
+  justify-content: center;
+  padding: 12px 7px;
+  width: 100%;
+}
+
+.collection-title-copy {
+  min-width: 0;
+}
+
+.panel-collapse-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 30px;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+  width: 30px;
+}
+
+.panel-collapse-button:hover,
+.panel-collapse-button:focus-visible {
+  background: #fbfaf5;
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.panel-collapse-button:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px rgba(17, 118, 107, 0.08);
 }
 
 .field-label {
@@ -248,6 +305,12 @@ button {
   min-width: 0;
   outline: 0;
   width: 100%;
+}
+
+.sidebar-section-divider {
+  border-top: 1px solid var(--line);
+  height: 1px;
+  margin: -1px 0 0;
 }
 
 .conversation-tools {
@@ -394,10 +457,11 @@ button {
 
 .session-history-list {
   display: grid;
+  flex: 1;
   gap: 7px;
   min-height: 0;
   overflow: auto;
-  padding: 0 4px 2px;
+  padding: 0 4px 8px;
   scrollbar-width: thin;
 }
 
@@ -522,6 +586,21 @@ button {
 .delete-session-button:disabled {
   cursor: wait;
   opacity: 0.7;
+}
+
+.session-list-status {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 11px;
+  gap: 6px;
+  justify-content: center;
+  min-height: 32px;
+  padding: 4px 8px 6px;
+}
+
+.session-list-status.muted {
+  color: color-mix(in oklch, var(--muted), var(--paper) 28%);
 }
 
 .document-card,
@@ -1063,6 +1142,24 @@ input:focus {
 .citation-rail {
   min-height: 0;
   overflow: hidden;
+}
+
+.citation-rail .panel-header.compact {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+}
+
+.citation-rail.collapsed {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.citation-rail.collapsed .panel-header.compact {
+  display: flex;
+  justify-content: center;
+  padding: 12px 7px;
+  width: 100%;
 }
 
 .citation-list {

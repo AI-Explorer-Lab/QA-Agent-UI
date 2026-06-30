@@ -250,11 +250,14 @@ export function getSession(sessionId: string): Promise<SessionResponse> {
   return requestJson<SessionResponse>(`/qa/sessions/${encodeURIComponent(sessionId)}`)
 }
 
-export function listSessions(collectionName: string, limit = 40): Promise<SessionListResponse> {
+export function listSessions(collectionName: string, limit = 40, offset = 0): Promise<SessionListResponse> {
   const params = new URLSearchParams({
     collection_name: collectionName.trim() || 'default',
     limit: String(limit),
   })
+  if (offset > 0) {
+    params.set('offset', String(offset))
+  }
   return requestJson<SessionListResponse>(`/qa/sessions?${params.toString()}`)
 }
 

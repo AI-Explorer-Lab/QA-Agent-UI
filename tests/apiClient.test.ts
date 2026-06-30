@@ -154,6 +154,28 @@ describe('api client', () => {
     expect(response.sessions[0].title).toBe('季度收入追问')
   })
 
+  it('passes an offset when listing another session page', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          collection_name: 'default',
+          sessions: [],
+          has_more: false,
+          next_offset: null,
+        }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await listSessions('default', 20, 40)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/qa/sessions?collection_name=default&limit=20&offset=40',
+      expect.any(Object),
+    )
+  })
+
   it('deletes a session by session id', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

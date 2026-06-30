@@ -30,6 +30,8 @@ import type {
   UploadPayload,
 } from '@/types/qa'
 
+const SESSION_PAGE_SIZE = 40
+
 interface WorkspaceState {
   collectionName: string
   uploadCollectionName: string
@@ -59,6 +61,9 @@ interface WorkspaceState {
   conversationMessages: ConversationDisplayMessage[]
   sessions: SessionSummary[]
   sessionsLoading: boolean
+  sessionsLoadingMore: boolean
+  sessionsHasMore: boolean
+  sessionsNextOffset: number
   sessionLoading: boolean
   sessionSearch: string
   sessionsError: string
@@ -95,6 +100,9 @@ export const useQaStore = defineStore('qa', {
     conversationMessages: [],
     sessions: [],
     sessionsLoading: false,
+    sessionsLoadingMore: false,
+    sessionsHasMore: true,
+    sessionsNextOffset: 0,
     sessionLoading: false,
     sessionSearch: '',
     sessionsError: '',
@@ -360,15 +368,38 @@ export const useQaStore = defineStore('qa', {
     async refreshSessions() {
       const collectionName = this.collectionName.trim() || 'default'
       this.sessionsLoading = true
+      this.sessionsLoadingMore = false
       this.sessionsError = ''
       try {
-        const response: SessionListResponse = await listSessions(collectionName)
+        const response: SessionListResponse = await listSessions(collectionName, SESSION_PAGE_SIZE)
         if ((response.collection_name || collectionName) !== (this.collectionName.trim() || 'default')) return
         this.sessions = response.sessions ?? []
+        this.sessionsHasMore = response.has_more ?? this.sessions.length >= SESSION_PAGE_SIZE
+        this.sessionsNextOffset = response.next_offset ?? this.sessions.length
       } catch (error) {
         this.sessionsError = formatError(error)
       } finally {
         this.sessionsLoading = false
+      }
+    },
+    async loadMoreSessions() {
+      if (this.sessionsLoading || this.sessionsLoadingMore || !this.sessionsHasMore) return
+      const collectionName = this.collectionName.trim() || 'default'
+      const offset = this.sessionsNextOffset || this.sessions.length
+      this.sessionsLoadingMore = true
+      this.sessionsError = ''
+      try {
+        const response: SessionListResponse = await listSessions(collectionName, SESSION_PAGE_SIZE, offset)
+        if ((response.collection_name || collectionName) !== (this.collectionName.trim() || 'default')) return
+        const seen = new Set(this.sessions.map((session) => session.session_id))
+        const nextSessions = (response.sessions ?? []).filter((session) => !seen.has(session.session_id))
+        this.sessions.push(...nextSessions)
+        this.sessionsHasMore = response.has_more ?? (response.sessions ?? []).length >= SESSION_PAGE_SIZE
+        this.sessionsNextOffset = response.next_offset ?? offset + (response.sessions ?? []).length
+      } catch (error) {
+        this.sessionsError = formatError(error)
+      } finally {
+        this.sessionsLoadingMore = false
       }
     },
     async selectSession(sessionId: string) {
@@ -466,19 +497,22 @@ export const useQaStore = defineStore('qa', {
       this.activeAssistantMessageId = ''
       this.selectedCitationId = ''
     },
-    async deleteCurrentSession() {
-      const sid = this.sessionId.trim()
+    async deleteSessionById(sessionId: string) {
+      const sid = sessionId.trim()
       if (!sid || this.deletingSessionId) return null
       this.error = ''
       this.sessionsError = ''
       this.deletingSessionId = sid
       try {
         const result = await deleteSession(sid)
+        const previousLength = this.sessions.length
         this.sessions = this.sessions.filter((session) => session.session_id !== sid)
+        if (this.sessions.length < previousLength) {
+          this.sessionsNextOffset = Math.max(0, this.sessionsNextOffset - 1)
+        }
         if (this.sessionId === sid) {
           this.startNewSession()
         }
-        await this.refreshSessions()
         return result
       } catch (error) {
         this.sessionsError = formatError(error)
@@ -486,6 +520,9 @@ export const useQaStore = defineStore('qa', {
       } finally {
         this.deletingSessionId = ''
       }
+    },
+    async deleteCurrentSession() {
+      return this.deleteSessionById(this.sessionId)
     },
     async indexPdf(payload: IndexPayload): Promise<IndexResponse | null> {
       this.error = ''
@@ -549,6 +586,19 @@ function formatError(error: unknown): string {
     return error.message
   }
   return '请求失败，请检查后端服务'
+}
+
+export function formatSessionTitle(
+  session: Pick<SessionSummary, 'title' | 'last_user_question'> | null | undefined,
+  fallback = '新对话',
+): string {
+  const title = session?.title?.trim()
+  if (title) return title
+
+  const lastUserQuestion = session?.last_user_question?.trim()
+  if (lastUserQuestion) return lastUserQuestion
+
+  return fallback
 }
 
 function sleep(ms: number): Promise<void> {

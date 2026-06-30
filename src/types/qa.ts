@@ -127,6 +127,10 @@ export interface SessionSummary {
 export interface SessionListResponse {
   collection_name: string
   sessions: SessionSummary[]
+  limit?: number
+  offset?: number
+  has_more?: boolean
+  next_offset?: number | null
 }
 
 export interface DeleteSessionResponse {

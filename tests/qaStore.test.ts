@@ -2,8 +2,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { askQuestionStream, deleteSession, getSession, listSessions } from '@/api/client'
-import { useQaStore } from '@/stores/qaStore'
-import type { AskResponse } from '@/types/qa'
+import { formatSessionTitle, useQaStore } from '@/stores/qaStore'
+import type { AskResponse, SessionSummary } from '@/types/qa'
 
 vi.mock('@/api/client', () => ({
   ApiError: class ApiError extends Error {
@@ -37,6 +37,20 @@ const resolvedResponse: AskResponse = {
   },
 }
 
+function sessionSummary(sessionId: string, title: string): SessionSummary {
+  return {
+    session_id: sessionId,
+    collection_name: 'default',
+    title,
+    message_count: 2,
+    turn_count: 1,
+    updated_at: '',
+    created_at: '',
+    citation_count: 1,
+    evidence_count: 1,
+  }
+}
+
 describe('qaStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -61,6 +75,41 @@ describe('qaStore', () => {
     const store = useQaStore()
 
     expect(store.question).toBe('')
+  })
+
+  it('uses the last user question as the session title fallback', () => {
+    expect(formatSessionTitle({ title: '', last_user_question: 'What is 2025 revenue?' })).toBe(
+      'What is 2025 revenue?',
+    )
+    expect(formatSessionTitle({ title: 'Quarterly revenue', last_user_question: 'What is 2025 revenue?' })).toBe(
+      'Quarterly revenue',
+    )
+    expect(formatSessionTitle({ title: '', last_user_question: '   ' })).toBe('新对话')
+  })
+
+  it('loads additional session pages without replacing existing sessions', async () => {
+    vi.mocked(listSessions)
+      .mockResolvedValueOnce({
+        collection_name: 'default',
+        sessions: [sessionSummary('s1', '第一页')],
+        has_more: true,
+        next_offset: 1,
+      })
+      .mockResolvedValueOnce({
+        collection_name: 'default',
+        sessions: [sessionSummary('s2', '第二页')],
+        has_more: false,
+        next_offset: null,
+      })
+
+    const store = useQaStore()
+    await store.refreshSessions()
+    await store.loadMoreSessions()
+
+    expect(listSessions).toHaveBeenNthCalledWith(1, 'default', 40)
+    expect(listSessions).toHaveBeenNthCalledWith(2, 'default', 40, 1)
+    expect(store.sessions.map((session) => session.session_id)).toEqual(['s1', 's2'])
+    expect(store.sessionsHasMore).toBe(false)
   })
 
   it('keeps the active transcript and appends a new pending turn before sending ask', async () => {
@@ -328,5 +377,23 @@ describe('qaStore', () => {
     expect(store.sessionId).toBe('')
     expect(store.currentResponse).toBeNull()
     expect(store.sessions).toEqual([])
+  })
+
+  it('deletes an inactive session without switching the active conversation', async () => {
+    const store = useQaStore()
+    store.sessionId = 'session-active'
+    store.currentResponse = resolvedResponse
+    store.conversationMessages = [{ id: 'u-active', role: 'user', content: 'active question' }]
+    store.sessionsNextOffset = 2
+    store.sessions = [sessionSummary('session-active', '当前会话'), sessionSummary('session-delete', '待删除会话')]
+
+    await store.deleteSessionById('session-delete')
+
+    expect(deleteSession).toHaveBeenCalledWith('session-delete')
+    expect(store.sessionId).toBe('session-active')
+    expect(store.currentResponse).toEqual(resolvedResponse)
+    expect(store.conversationMessages).toEqual([{ id: 'u-active', role: 'user', content: 'active question' }])
+    expect(store.sessions.map((session) => session.session_id)).toEqual(['session-active'])
+    expect(store.sessionsNextOffset).toBe(1)
   })
 })
